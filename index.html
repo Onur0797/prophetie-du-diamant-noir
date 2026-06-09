@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Le Diamant Noir — Accès Restreint</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Pirata+One&family=Cinzel:wght@400;700;900&family=Special+Elite&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <!-- Particules flottantes (cendres + braises) -->
+    <div class="particles" id="particles"></div>
+
+    <!-- Brume maudite -->
+    <div class="fog"></div>
+    <div class="fog fog-2"></div>
+
+    <!-- ===== ÉCRAN 1 : CONNEXION ===== -->
+    <div id="screen-login" class="screen active">
+      <div class="login-container">
+        <div class="skull-deco">☠</div>
+
+        <div class="title-block">
+          <p class="subtitle-top">— Confrérie des Abysses —</p>
+          <h1 class="main-title">Le Diamant Noir</h1>
+          <div class="title-divider">
+            <span class="divider-line"></span>
+            <span class="divider-icon">⚓</span>
+            <span class="divider-line"></span>
+          </div>
+          <p class="subtitle-bottom">Accès aux Archives Maudites</p>
+        </div>
+
+        <div class="login-box">
+          <div class="login-box-inner">
+            <p class="login-instruction">
+              Prouve que ton sang est digne.<br />Les imposteurs périssent dans
+              les profondeurs.
+            </p>
+
+            <div class="field-group">
+              <label for="username">✦ Identité du Navigateur</label>
+              <input
+                type="text"
+                id="username"
+                placeholder="Ton nom dans les légendes..."
+                autocomplete="off"
+                spellcheck="false"
+              />
+            </div>
+
+            <div class="field-group">
+              <label for="password">✦ Mot de Passe des Abysses</label>
+              <input
+                type="password"
+                id="password"
+                placeholder="Le secret gravé dans l'os..."
+                autocomplete="off"
+              />
+            </div>
+
+            <div
+              id="error-message"
+              class="error-message"
+              aria-live="polite"
+            ></div>
+
+            <button id="login-btn" class="login-btn">
+              <span class="btn-text">Franchir le Voile</span>
+              <span class="btn-icon">⚔</span>
+            </button>
+          </div>
+
+          <div class="corner corner-tl"></div>
+          <div class="corner corner-tr"></div>
+          <div class="corner corner-bl"></div>
+          <div class="corner corner-br"></div>
+        </div>
+
+        <p class="footer-warning">
+          ⚠ Toute tentative d'intrusion sera punie par les lois des mers ⚠
+        </p>
+      </div>
+    </div>
+
+    <!-- ===== ÉCRAN 2 : COMPTE À REBOURS ===== -->
+    <div id="screen-countdown" class="screen">
+      <div class="countdown-container">
+        <div class="top-ornament">
+          <span>⚓</span>
+          <span class="ornament-line"></span>
+          <span>☠</span>
+          <span class="ornament-line"></span>
+          <span>⚓</span>
+        </div>
+
+        <div class="countdown-header">
+          <p class="countdown-subtitle">La Prophétie s'accomplit</p>
+          <h2 class="countdown-title">Le Jour du Jugement</h2>
+        </div>
+
+        <p class="countdown-lore">
+          Les étoiles se sont alignées. La carte est révélée.<br />
+          Le Diamant Noir attend son heure dans les ténèbres.<br />
+          <em
+            >Nul ne peut arrêter ce qui a été scellé par le sang des
+            Ganseman.</em
+          >
+        </p>
+
+        <div class="countdown-display" id="countdown-display">
+          <div class="time-unit">
+            <span class="time-value" id="days">00</span>
+            <span class="time-label">Jours</span>
+          </div>
+          <div class="time-separator">:</div>
+          <div class="time-unit">
+            <span class="time-value" id="hours">00</span>
+            <span class="time-label">Heures</span>
+          </div>
+          <div class="time-separator">:</div>
+          <div class="time-unit">
+            <span class="time-value" id="minutes">00</span>
+            <span class="time-label">Minutes</span>
+          </div>
+          <div class="time-separator">:</div>
+          <div class="time-unit">
+            <span class="time-value" id="seconds">00</span>
+            <span class="time-label">Secondes</span>
+          </div>
+        </div>
+
+        <div class="progress-bar-container">
+          <div class="progress-bar" id="progress-bar"></div>
+        </div>
+
+        <div class="bottom-ornament">
+          <span class="ornament-line-long"></span>
+          <span>✦</span>
+          <span class="ornament-line-long"></span>
+        </div>
+
+        <p class="countdown-footer">
+          Garde le secret. Garde la foi. L'heure approche.
+        </p>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
