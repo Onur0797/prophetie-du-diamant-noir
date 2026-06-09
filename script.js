@@ -1,5 +1,5 @@
 /* ===================================================
-   LE DIAMANT NOIR — v9 — Audio iOS Safari compatible
+   LE DIAMANT NOIR — v10 — Audio iOS Safari robust
 =================================================== */
 'use strict';
 
@@ -24,59 +24,47 @@ const progressBar     = document.getElementById('progress-bar');
 
 let ctx          = null;
 let audioStarted = false;
-const buffers    = {};
+const buffers    = {};   // AudioBuffer ou { _el, _gain }
 
-// IMPORTANT : chain.flac → chain.wav (FLAC non supporté sur iOS Safari)
 const SOUNDS = {
   creak:   'creak.wav',
-  chain:   'chain.wav',   // ← converti depuis chain.flac
+  chain:   'chain.wav',
   whisper: 'whisper.wav',
 };
 
-// Charge et décode un fichier audio
-// Fallback vers <audio> si fetch échoue (fréquent en local sur iOS)
 async function loadBuffer(name, url) {
-  // --- Tentative 1 : fetch + decodeAudioData ---
+  // Tentative 1 : fetch + decodeAudioData (chemin idéal)
   try {
     const resp = await fetch(url);
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const raw = await resp.arrayBuffer();
     buffers[name] = await ctx.decodeAudioData(raw);
-    console.log('[audio] chargé (fetch) :', name);
+    console.log('[audio] OK (fetch):', name);
     return;
   } catch (e) {
-    console.warn('[audio] fetch échoué pour', url, '—', e.message, '— tentative fallback <audio>');
+    console.warn('[audio] fetch raté:', name, e.message);
   }
 
-  // --- Tentative 2 : MediaElementSource (fallback iOS) ---
+  // Tentative 2 : <audio> element (fallback iOS sans CORS)
   try {
-    const el = new Audio();
-    el.crossOrigin = 'anonymous';
-    el.src = url;
-    await new Promise((resolve, reject) => {
-      el.oncanplaythrough = resolve;
-      el.onerror = reject;
-      el.load();
-      // Timeout de sécurité : certains navigateurs mobiles ne déclenchent
-      // pas canplaythrough pour des fichiers courts
-      setTimeout(resolve, 3000);
-    });
-    const mediaSrc = ctx.createMediaElementSource(el);
-    // On stocke l'élément HTML audio + son nœud source
-    buffers[name] = { _el: el, _mediaSrc: mediaSrc };
-    console.log('[audio] chargé (fallback <audio>) :', name);
+    const el  = new Audio(url);
+    // PAS de crossOrigin ici — évite les rejets CORS sur GitHub Pages
+    const gainNode = ctx.createGain();
+    gainNode.connect(ctx.destination);
+    const src = ctx.createMediaElementSource(el);
+    src.connect(gainNode);
+    buffers[name] = { _el: el, _gain: gainNode };
+    console.log('[audio] OK (fallback <audio>):', name);
   } catch (e2) {
-    console.warn('[audio] fallback aussi échoué pour', url, '—', e2);
+    console.warn('[audio] fallback raté:', name, e2);
   }
 }
 
-// Joue un son — gère les deux cas (AudioBuffer ou MediaElement)
 function playBuf(name, { vol = 1, loop = false, rate = 1 } = {}) {
   if (!ctx || !buffers[name]) return null;
-
   const buf = buffers[name];
 
-  // Cas 1 : AudioBuffer classique
+  // AudioBuffer classique
   if (buf instanceof AudioBuffer) {
     const src = ctx.createBufferSource();
     src.buffer = buf;
@@ -90,21 +78,14 @@ function playBuf(name, { vol = 1, loop = false, rate = 1 } = {}) {
     return src;
   }
 
-  // Cas 2 : MediaElement fallback
+  // MediaElement fallback
   if (buf._el) {
-    const el = buf._el;
-    el.loop = loop;
-    el.playbackRate = rate;
-    // Reconnecte le gain à chaque lecture (iOS détache parfois le nœud)
-    try {
-      const g = ctx.createGain();
-      g.gain.value = vol;
-      buf._mediaSrc.connect(g);
-      g.connect(ctx.destination);
-    } catch (_) { /* déjà connecté */ }
-    el.currentTime = 0;
-    el.play().catch(e => console.warn('[audio] play() bloqué :', e));
-    return el;
+    buf._gain.gain.value = vol;
+    buf._el.loop         = loop;
+    buf._el.playbackRate = rate;
+    buf._el.currentTime  = 0;
+    buf._el.play().catch(e => console.warn('[audio] play() bloqué:', e));
+    return buf._el;
   }
 
   return null;
@@ -140,12 +121,10 @@ function playChain() {
 // ============================================================
 //  CHUCHOTEMENTS — loop avec fade in/out
 // ============================================================
-let whisperNode = null;
 let whisperGain = null;
 
 function startWhispers() {
   if (!audioStarted || !buffers['whisper']) return;
-
   const buf = buffers['whisper'];
 
   whisperGain = ctx.createGain();
@@ -153,23 +132,24 @@ function startWhispers() {
   whisperGain.connect(ctx.destination);
 
   if (buf instanceof AudioBuffer) {
-    whisperNode = ctx.createBufferSource();
-    whisperNode.buffer = buf;
-    whisperNode.loop   = true;
-    whisperNode.playbackRate.value = 0.9 + Math.random() * 0.2;
-    whisperNode.connect(whisperGain);
-    whisperNode.start();
+    const node = ctx.createBufferSource();
+    node.buffer = buf;
+    node.loop   = true;
+    node.playbackRate.value = 0.9 + Math.random() * 0.2;
+    node.connect(whisperGain);
+    node.start();
   } else if (buf._el) {
-    buf._el.loop = true;
+    // Déconnecte du gain par défaut, reconnecte au whisperGain
+    try { buf._el.__src.disconnect(); } catch (_) {}
+    buf._el.loop         = true;
     buf._el.playbackRate = 0.9 + Math.random() * 0.2;
-    try { buf._mediaSrc.connect(whisperGain); } catch (_) {}
+    const src = ctx.createMediaElementSource(buf._el);
+    src.connect(whisperGain);
     buf._el.play().catch(() => {});
-    whisperNode = buf._el;
   }
 
   whisperGain.gain.setValueAtTime(0, ctx.currentTime);
   whisperGain.gain.linearRampToValueAtTime(0.55, ctx.currentTime + 3);
-
   cycleWhispers();
 }
 
@@ -179,23 +159,21 @@ function cycleWhispers() {
   const fadeOut = 3 + Math.random() * 4;
   const silence = 4 + Math.random() * 8;
   const fadeIn  = 2 + Math.random() * 3;
-
   whisperGain.gain.cancelScheduledValues(t);
   whisperGain.gain.setValueAtTime(whisperGain.gain.value, t);
-  whisperGain.gain.linearRampToValueAtTime(0, t + fadeOut);
+  whisperGain.gain.linearRampToValueAtTime(0,    t + fadeOut);
   whisperGain.gain.linearRampToValueAtTime(0.55, t + fadeOut + silence + fadeIn);
-
   setTimeout(cycleWhispers, (fadeOut + silence + fadeIn + 1) * 1000);
 }
 
 // ============================================================
-//  DÉMARRAGE — iOS exige que AudioContext soit créé
-//  dans le même callstack que le geste utilisateur
+//  DÉMARRAGE
+//  iOS exige : new AudioContext() ET resume() dans le même
+//  callstack que le geste utilisateur (tap / keydown)
 // ============================================================
 async function startAmbiance() {
   if (audioStarted) return;
 
-  // ← Création ET resume dans le handler du geste (obligatoire iOS)
   ctx = new (window.AudioContext || window.webkitAudioContext)();
   try { await ctx.resume(); } catch (_) {}
 
@@ -205,10 +183,10 @@ async function startAmbiance() {
 
   audioStarted = true;
 
-  setTimeout(playCreak,      4000);
-  setTimeout(playChain,      1000);
-  setTimeout(playChain,      3500);
-  setTimeout(startWhispers,   500);
+  setTimeout(playCreak,     4000);
+  setTimeout(playChain,     1000);
+  setTimeout(playChain,     3500);
+  setTimeout(startWhispers,  500);
 }
 
 function onFirstInteraction() {
